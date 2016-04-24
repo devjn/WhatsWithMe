@@ -138,6 +138,16 @@ public class ChatRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
     }
 
+    public void addOrUpdate(String text) {
+        Message message = chatMessageList.get(chatMessageList.size()-1);
+        if(!message.left) {
+            chatMessageList.get(chatMessageList.size()-1).message = text;
+            notifyItemChanged(chatMessageList.size()-1);
+        } else {
+            add(new Message(false, text));
+        }
+    }
+
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
 

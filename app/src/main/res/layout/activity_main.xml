@@ -11,12 +11,27 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.codekarhu.whatswithme.MainActivity">
 
+
     <TextView
+        style="@style/TextAppearance.AppCompat.Headline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello,"
+        android:id="@+id/textView2"
+        android:layout_above="@+id/record"
+        android:layout_marginBottom="24dp"
+        android:layout_centerHorizontal="true"/>
+
+    <TextView
+        style="@style/TextAppearance.AppCompat.Subhead"
         android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
-        android:text="Hello this si an example app for IBM Watson!"/>
+        android:layout_centerHorizontal="true"
+        android:layout_below="@+id/record"
+        android:layout_marginTop="24dp"
+        android:text="Touch mic to talk with dr. Watson"/>
 
     <FrameLayout
         android:id="@+id/container"
@@ -40,6 +55,7 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
+        android:tint="@android:color/white"
         android:elevation="2dp"
         android:src="@drawable/mic"
         app:fabSize="normal"/>
@@ -50,5 +66,6 @@
         android:id="@+id/textState"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"/>
+
 
 </RelativeLayout>

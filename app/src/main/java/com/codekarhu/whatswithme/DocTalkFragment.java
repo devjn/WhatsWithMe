@@ -46,5 +46,9 @@ public class DocTalkFragment extends Fragment {
         mRecyclerAdapter.add(new Message(isWatson, text));
     }
 
+    public void addOrUpdate(String text) {
+        mRecyclerAdapter.addOrUpdate(text);
+    }
+
 
 }

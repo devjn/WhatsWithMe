@@ -4,7 +4,6 @@ import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
-import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,18 +12,10 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
-import android.text.style.AbsoluteSizeSpan;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.ibm.watson.developer_cloud.android.speech_common.v1.TokenProvider;
@@ -47,7 +38,6 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Vector;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -60,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
 
     FragmentTabSTT fragmentTabSTT = new FragmentTabSTT();
     FragmentTabTTS fragmentTabTTS = new FragmentTabTTS();
+    DocTalkFragment talkFragment = new DocTalkFragment();
 
     boolean isRecording;
 
@@ -83,40 +74,44 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 updateRecordIntefrace();
-                initView();
+                initView(true);
             }
         });
         recordCircle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 updateRecordIntefrace();
+                initView(false);
             }
         });
 
         if(savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
+                    .add(fragmentTabSTT, "STT")
                     .add(fragmentTabTTS, "TTS")
                     .commit();
         }
     }
 
-    private void initView() {
-        Fragment fragment = getSupportFragmentManager().findFragmentByTag("dialog");
-        if(fragment != null && fragment.getView() != null) {
-            if(isRecording) {
-                fragment.getView().setVisibility(View.VISIBLE);
-            } else fragment.getView().setVisibility(View.INVISIBLE);
-        } else {
-            try {
-                playTTS("Hello, I am doctor Watson, can I help you?");
-            } catch (JSONException e) {
-                e.printStackTrace();
+    private void initView(boolean show) {
+        Log.w(TAG, "init view");
+        talkFragment = (DocTalkFragment) getSupportFragmentManager().findFragmentByTag("dialog");
+        if(talkFragment != null && talkFragment.getView() != null) {
+            if(isRecording && show) {
+                talkFragment.getView().setVisibility(View.VISIBLE);
+                Log.w(TAG, "visible fragment");
+            } else {
+                talkFragment.getView().setVisibility(View.INVISIBLE);
+                Log.w(TAG, "invisible fragment");
             }
+        } else {
             final Runnable runnableUi = new Runnable(){
                 @Override
                 public void run() {
+                    talkFragment = new DocTalkFragment();
                     getSupportFragmentManager().beginTransaction().
-                            replace(R.id.container, new DocTalkFragment(), "dialog")
+                            replace(R.id.container, talkFragment, "dialog")
+                            .addToBackStack(null)
                             .commit();
                 }
             };
@@ -130,33 +125,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateMic() {
-        mFab.setVisibility(View.INVISIBLE);
-        recordCircle.setVisibility(View.VISIBLE);
-        recordCircle.setAmplitude(0);
-        runningAnimationAudio = new AnimatorSet();
-        runningAnimationAudio.playTogether(
-                ObjectAnimator.ofFloat(recordCircle, "scale", 1));
-        runningAnimationAudio.setDuration(300);
-        runningAnimationAudio.setInterpolator(new DecelerateInterpolator());
-        runningAnimationAudio.start();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                recordCircle.setAmplitude(100);
-
-            }
-        });
-    }
-
-
     private void updateRecordIntefrace() {
-        isRecording = ! isRecording;
+        isRecording = !isRecording;
         if (isRecording) {
             mFab.setVisibility(View.INVISIBLE);
             recordCircle.setVisibility(View.VISIBLE);
@@ -189,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
 //
 //                            }
 //                        });
+                        fragmentTabSTT.record(true);
                     }
                 }
                 @Override
@@ -199,6 +170,7 @@ public class MainActivity extends AppCompatActivity {
             runningAnimationAudio.setInterpolator(new DecelerateInterpolator());
             runningAnimationAudio.start();
         } else {
+            fragmentTabSTT.record(false);
             if (runningAnimationAudio != null) {
                 runningAnimationAudio.cancel();
             }
@@ -213,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     if (runningAnimationAudio != null && runningAnimationAudio.equals(animation)) {
-                        recordCircle.setVisibility(View.GONE);
+                        recordCircle.setVisibility(View.INVISIBLE);
                         mFab.setVisibility(View.VISIBLE);
                         runningAnimationAudio = null;
                     }
@@ -289,81 +261,59 @@ public class MainActivity extends AppCompatActivity {
         private static String mRecognitionResults = "";
 
         ConnectionState mState = ConnectionState.IDLE;
-        public View mView = null;
         public Context mContext = null;
         public JSONObject jsonModels = null;
         private Handler mHandler = null;
 
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-
-            mView = inflater.inflate(R.layout.tab_stt, container, false);
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setRetainInstance(true);
             mContext = getActivity().getApplicationContext();
             mHandler = new Handler();
-
-            setText();
             if (initSTT() == false) {
                 displayResult("Error: no authentication credentials/token available, please enter your authentication information");
-                return mView;
+                return;
             }
 
             if (jsonModels == null) {
                 jsonModels = new STTCommands().doInBackground();
                 if (jsonModels == null) {
                     displayResult("Please, check internet connection.");
-                    return mView;
+                    return ;
                 }
             }
-            addItemsOnSpinnerModels();
 
             displayStatus("please, press the button to start speaking");
-
-            Button buttonRecord = (Button)mView.findViewById(R.id.buttonRecord);
-            buttonRecord.setOnClickListener(new View.OnClickListener() {
-
-                @Override
-                public void onClick(View arg0) {
-
-                    if (mState == ConnectionState.IDLE) {
-                        mState = ConnectionState.CONNECTING;
-                        Log.d(TAG, "onClickRecord: IDLE -> CONNECTING");
-                        Spinner spinner = (Spinner)mView.findViewById(R.id.spinnerModels);
-                        spinner.setEnabled(false);
-                        mRecognitionResults = "";
-                        displayResult(mRecognitionResults);
-                        ItemModel item = (ItemModel)spinner.getSelectedItem();
-                        SpeechToText.sharedInstance().setModel(item.getModelName());
-                        displayStatus("connecting to the STT service...");
-                        // start recognition
-                        new AsyncTask<Void, Void, Void>(){
-                            @Override
-                            protected Void doInBackground(Void... none) {
-                                SpeechToText.sharedInstance().recognize();
-                                return null;
-                            }
-                        }.execute();
-                        setButtonLabel(R.id.buttonRecord, "Connecting...");
-                        setButtonState(true);
-                    }
-                    else if (mState == ConnectionState.CONNECTED) {
-                        mState = ConnectionState.IDLE;
-                        Log.d(TAG, "onClickRecord: CONNECTED -> IDLE");
-                        Spinner spinner = (Spinner)mView.findViewById(R.id.spinnerModels);
-                        spinner.setEnabled(true);
-                        SpeechToText.sharedInstance().stopRecognition();
-                        setButtonState(false);
-                    }
-                }
-            });
-
-            return mView;
         }
 
-        private String getModelSelected() {
+        public void record(boolean isRecording) {
+            if((isRecording && mState == ConnectionState.CONNECTED) ||
+                    (!isRecording && mState == ConnectionState.IDLE)) return;
+            if (mState == ConnectionState.IDLE) {
+                mState = ConnectionState.CONNECTING;
+                Log.d(TAG, "onClickRecord: IDLE -> CONNECTING");
+                mRecognitionResults = "";
+                displayResult(mRecognitionResults);
 
-            Spinner spinner = (Spinner)mView.findViewById(R.id.spinnerModels);
-            ItemModel item = (ItemModel)spinner.getSelectedItem();
-            return item.getModelName();
+                SpeechToText.sharedInstance().setModel("en-US_BroadbandModel");
+                displayStatus("connecting to the STT service...");
+                // start recognition
+                new AsyncTask<Void, Void, Void>(){
+                    @Override
+                    protected Void doInBackground(Void... none) {
+                        SpeechToText.sharedInstance().recognize();
+                        return null;
+                    }
+                }.execute();
+                setButtonLabel(R.id.buttonRecord, "Connecting...");
+                setButtonState(true);
+            }
+            else if (mState == ConnectionState.CONNECTED) {
+                mState = ConnectionState.IDLE;
+                Log.d(TAG, "onClickRecord: CONNECTED -> IDLE");
+                SpeechToText.sharedInstance().stopRecognition();
+                setButtonState(false);
+            }
         }
 
         public URI getHost(String url){
@@ -408,100 +358,15 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
-        protected void setText() {
-
-            Typeface roboto = Typeface.createFromAsset(getActivity().getApplicationContext().getAssets(), "font/Roboto-Bold.ttf");
-            Typeface notosans = Typeface.createFromAsset(getActivity().getApplicationContext().getAssets(), "font/NotoSans-Regular.ttf");
-
-            // title
-            TextView viewTitle = (TextView)mView.findViewById(R.id.title);
-            String strTitle = getString(R.string.sttTitle);
-            SpannableStringBuilder spannable = new SpannableStringBuilder(strTitle);
-            spannable.setSpan(new AbsoluteSizeSpan(47), 0, strTitle.length(), 0);
-            spannable.setSpan(new CustomTypefaceSpan("", roboto), 0, strTitle.length(), 0);
-            viewTitle.setText(spannable);
-            viewTitle.setTextColor(0xFF325C80);
-
-            // instructions
-            TextView viewInstructions = (TextView)mView.findViewById(R.id.instructions);
-            String strInstructions = getString(R.string.sttInstructions);
-            SpannableString spannable2 = new SpannableString(strInstructions);
-            spannable2.setSpan(new AbsoluteSizeSpan(20), 0, strInstructions.length(), 0);
-            spannable2.setSpan(new CustomTypefaceSpan("", notosans), 0, strInstructions.length(), 0);
-            viewInstructions.setText(spannable2);
-            viewInstructions.setTextColor(0xFF121212);
-        }
-
-        public class ItemModel {
-
-            private JSONObject mObject = null;
-
-            public ItemModel(JSONObject object) {
-                mObject = object;
-            }
-
-            public String toString() {
-                try {
-                    return mObject.getString("description");
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            }
-
-            public String getModelName() {
-                try {
-                    return mObject.getString("name");
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            }
-        }
-
-        protected void addItemsOnSpinnerModels() {
-
-            Spinner spinner = (Spinner)mView.findViewById(R.id.spinnerModels);
-            int iIndexDefault = 0;
-
-            JSONObject obj = jsonModels;
-            ItemModel [] items = null;
-            try {
-                JSONArray models = obj.getJSONArray("models");
-
-                // count the number of Broadband models (narrowband models will be ignored since they are for telephony data)
-                Vector<Integer> v = new Vector<>();
-                for (int i = 0; i < models.length(); ++i) {
-                    if (models.getJSONObject(i).getString("name").indexOf("Broadband") != -1) {
-                        v.add(i);
-                    }
-                }
-                items = new ItemModel[v.size()];
-                int iItems = 0;
-                for (int i = 0; i < v.size() ; ++i) {
-                    items[iItems] = new ItemModel(models.getJSONObject(v.elementAt(i)));
-                    if (models.getJSONObject(v.elementAt(i)).getString("name").equals(getString(R.string.modelDefault))) {
-                        iIndexDefault = iItems;
-                    }
-                    ++iItems;
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-            if (items != null) {
-                ArrayAdapter<ItemModel> spinnerArrayAdapter = new ArrayAdapter<ItemModel>(getActivity(), android.R.layout.simple_spinner_item, items);
-                spinner.setAdapter(spinnerArrayAdapter);
-                spinner.setSelection(iIndexDefault);
-            }
-        }
 
         public void displayResult(final String result) {
             final Runnable runnableUi = new Runnable(){
                 @Override
                 public void run() {
-                    TextView textResult = (TextView)mView.findViewById(R.id.textResult);
-                    textResult.setText(result);
+//                    TextView textResult = (TextView)mView.findViewById(R.id.textResult);
+//                    textResult.setText(result);
+                    Log.i(TAG, "result = "+result);
+                    ((MainActivity)getActivity()).talkFragment.addOrUpdate(result);
                 }
             };
 
@@ -534,8 +399,8 @@ public class MainActivity extends AppCompatActivity {
             final Runnable runnableUi = new Runnable(){
                 @Override
                 public void run() {
-                    Button button = (Button)mView.findViewById(buttonId);
-                    button.setText(label);
+//                    Button button = (Button)mView.findViewById(buttonId);
+//                    button.setText(label);
                 }
             };
             new Thread(){
@@ -607,13 +472,13 @@ public class MainActivity extends AppCompatActivity {
                         JSONArray jArr1 = obj.getJSONArray("alternatives");
                         String str = jArr1.getJSONObject(0).getString("transcript");
                         // remove whitespaces if the language requires it
-                        String model = this.getModelSelected();
-                        if (model.startsWith("ja-JP") || model.startsWith("zh-CN")) {
-                            str = str.replaceAll("\\s+","");
-                        }
+//                        String model = this.getModelSelected();
+//                        if (model.startsWith("ja-JP") || model.startsWith("zh-CN")) {
+//                            str = str.replaceAll("\\s+","");
+//                        }
                         String strFormatted = Character.toUpperCase(str.charAt(0)) + str.substring(1);
                         if (obj.getString("final").equals("true")) {
-                            String stopMarker = (model.startsWith("ja-JP") || model.startsWith("zh-CN")) ? "?" : ". ";
+                            String stopMarker = ". ";
                             mRecognitionResults += strFormatted.substring(0,strFormatted.length()-1) + stopMarker;
                             displayResult(mRecognitionResults);
                         } else {
@@ -647,6 +512,11 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onCreateTTS");
             mContext = getActivity().getApplicationContext();
             initTTS();
+            try {
+                ((MainActivity)getActivity()).playTTS("Hello, I am doctor Watson, can I help you?");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
         }
 
         public URI getHost(String url){
@@ -761,6 +631,7 @@ public class MainActivity extends AppCompatActivity {
 
         //Call the sdk function
         TextToSpeech.sharedInstance().synthesize(ttsText);
+
     }
 
 
