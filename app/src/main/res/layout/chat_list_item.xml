@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:id="@+id/msgRoot"
+              xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:background="@drawable/statelist_item_background"
+              android:paddingTop="4dp"
+              tools:paddingLeft="50dp"
+              tools:layout_gravity="center_vertical|end">
+
+    <FrameLayout
+        android:id="@+id/msgParent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/box"
+        tools:background="@drawable/chat_outgoing_text_states"
+        tools:layout_gravity="end">
+
+        <TextView
+            android:id="@+id/msgText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+            android:textSize="16sp"
+            android:paddingLeft="16dp"
+            tools:text="This is message &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;"/>
+
+
+    </FrameLayout>
+
+</LinearLayout>
