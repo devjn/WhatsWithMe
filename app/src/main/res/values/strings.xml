@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">WhatsWithMe</string>
+    <string name="app_name">Whats With Me</string>
 
     <string name="intro">IBM Watson Speech</string>
     <string name="action_settings">Settings</string>

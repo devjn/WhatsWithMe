@@ -8,6 +8,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.StrictMode;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewCompat;
@@ -136,9 +137,11 @@ public class MainActivity extends AppCompatActivity {
                 runningAnimationAudio.cancel();
             }
             runningAnimationAudio = new AnimatorSet();
+            float slide = (Utils.getScreenHeight(MainActivity.this) / 2) - ( Utils.dp(72));
+            Log.i(TAG, "slide= "+slide);
             runningAnimationAudio.playTogether(
                     ObjectAnimator.ofFloat(recordCircle, "scale", 1),
-                    ObjectAnimator.ofFloat(recordCircle, "translationY", (Utils.getScreenHeight(MainActivity.this)/3)));
+                    ObjectAnimator.ofFloat(recordCircle, "translationY", slide));
             runningAnimationAudio.setDuration(300);
             runningAnimationAudio.addListener(new Animator.AnimatorListener() {
                 @Override
@@ -147,18 +150,6 @@ public class MainActivity extends AppCompatActivity {
                 public void onAnimationEnd(Animator animation) {
                     if (runningAnimationAudio != null && runningAnimationAudio.equals(animation)) {
                         runningAnimationAudio = null;
-//                        new Thread(new Runnable() {
-//                            @Override
-//                            public void run() {
-//                                try {
-//                                    Thread.sleep(10);
-//                                } catch (InterruptedException e) {
-//                                    e.printStackTrace();
-//                                }
-//                                recordCircle.setAmplitude(100);
-//
-//                            }
-//                        });
                         fragmentTabSTT.record(true);
                     }
                 }
@@ -169,6 +160,7 @@ public class MainActivity extends AppCompatActivity {
             });
             runningAnimationAudio.setInterpolator(new DecelerateInterpolator());
             runningAnimationAudio.start();
+            startFoo();
         } else {
             fragmentTabSTT.record(false);
             if (runningAnimationAudio != null) {
@@ -209,32 +201,43 @@ public class MainActivity extends AppCompatActivity {
 
     ConnectionState mState = ConnectionState.IDLE;
 
+    int phase = 0;
 
-    private void startRecording() {
-        if (mState == ConnectionState.IDLE) {
-            mState = ConnectionState.CONNECTING;
-            Log.d(TAG, "onClickRecord: IDLE -> CONNECTING");
-            mRecognitionResults = "";
-            displayResult(mRecognitionResults);
-            SpeechToText.sharedInstance().setModel("en-US_BroadbandModel");
-            displayResult("connecting to the STT service...");
-            // start recognition
-            new AsyncTask<Void, Void, Void>(){
-                @Override
-                protected Void doInBackground(Void... none) {
-                    SpeechToText.sharedInstance().recognize();
-                    return null;
+    String[] fooData = new String[] {"Do you have a temperature?", "Do you have dry cough", "Do you have sneezing" };
+    String[] fooTalk = new String[] {"Doc, what is wrong with me, I have sharp headache", "I think it's quite high"};
+
+    private void startFoo() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    phase = 0;
+                    Thread.sleep(10000);
+                    fragmentTabSTT.record(false);
+                    playTTS(fooData[phase]);
+                    phase = 1;
+                    Thread.sleep(10000);
+                    fragmentTabSTT.record(true);
+                    Thread.sleep(10000);
+                    fragmentTabSTT.record(false);
+                    playTTS(fooData[phase]);
+                    phase = 2;
+                    Thread.sleep(10000);
+                    fragmentTabSTT.record(true);
+                    Thread.sleep(10000);
+                    fragmentTabSTT.record(false);
+                    playTTS(fooData[phase]);
+                    phase = 3;
+                    Thread.sleep(10000);
+                    fragmentTabSTT.record(true);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
-            }.execute();
-//            setButtonLabel(R.id.buttonRecord, "Connecting...");
-//            setButtonState(true);
-        }
-        else if (mState == ConnectionState.CONNECTED) {
-            mState = ConnectionState.IDLE;
-            Log.d(TAG, "onClickRecord: CONNECTED -> IDLE");
-            SpeechToText.sharedInstance().stopRecognition();
-//            setButtonState(false);
-        }
+                Log.i(TAG, "10 sec time");
+            }
+        }).start();
     }
 
     public void displayResult(final String result) {
@@ -245,7 +248,6 @@ public class MainActivity extends AppCompatActivity {
                 textResult.setText(result);
             }
         };
-
         new Thread(){
             public void run(){
                 mHandler.post(runnableUi);
@@ -262,28 +264,26 @@ public class MainActivity extends AppCompatActivity {
 
         ConnectionState mState = ConnectionState.IDLE;
         public Context mContext = null;
-        public JSONObject jsonModels = null;
         private Handler mHandler = null;
 
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             setRetainInstance(true);
-            mContext = getActivity().getApplicationContext();
             mHandler = new Handler();
             if (initSTT() == false) {
                 displayResult("Error: no authentication credentials/token available, please enter your authentication information");
                 return;
             }
 
-            if (jsonModels == null) {
-                jsonModels = new STTCommands().doInBackground();
-                if (jsonModels == null) {
-                    displayResult("Please, check internet connection.");
-                    return ;
-                }
-            }
-
             displayStatus("please, press the button to start speaking");
+        }
+
+        @Override
+        public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+            super.onActivityCreated(savedInstanceState);
+            mContext = getActivity().getApplicationContext();
+            if(mHandler ==null)
+                mHandler = new Handler();
         }
 
         public void record(boolean isRecording) {
@@ -312,6 +312,9 @@ public class MainActivity extends AppCompatActivity {
                 mState = ConnectionState.IDLE;
                 Log.d(TAG, "onClickRecord: CONNECTED -> IDLE");
                 SpeechToText.sharedInstance().stopRecognition();
+                if(((MainActivity)getActivity()).phase < 2)
+                ((MainActivity)getActivity()).talkFragment.addOrUpdate(
+                        ((MainActivity)getActivity()).fooTalk[((MainActivity)getActivity()).phase]);
                 setButtonState(false);
             }
         }
@@ -366,6 +369,7 @@ public class MainActivity extends AppCompatActivity {
 //                    TextView textResult = (TextView)mView.findViewById(R.id.textResult);
 //                    textResult.setText(result);
                     Log.i(TAG, "result = "+result);
+                    if(result.startsWith("ssl")) return;
                     ((MainActivity)getActivity()).talkFragment.addOrUpdate(result);
                 }
             };
@@ -496,8 +500,15 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        public void onAmplitude(double amplitude, double volume) {
-            //Logger.e(TAG, "amplitude=" + amplitude + ", volume=" + volume);
+        public void onAmplitude(final double amplitude, final double volume) {
+            Runnable myRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    ((MainActivity)getActivity()).recordCircle.setAmplitude(amplitude / volume);
+                }
+            };
+            mHandler.post(myRunnable);
+//            Log.e(TAG, "amplitude=" + amplitude + ", volume=" + volume);
         }
     }
 
@@ -560,23 +571,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public static class STTCommands extends AsyncTask<Void, Void, JSONObject> {
-
-        protected JSONObject doInBackground(Void... none) {
-
-            return SpeechToText.sharedInstance().getModels();
-        }
-    }
-
-    public static class TTSCommands extends AsyncTask<Void, Void, JSONObject> {
-
-        protected JSONObject doInBackground(Void... none) {
-
-            return TextToSpeech.sharedInstance().getVoices();
-        }
-    }
-
-
     static class MyTokenProvider implements TokenProvider {
 
         String m_strTokenFactoryURL = null;
@@ -589,7 +583,7 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d(TAG, "attempting to get a token from: " + m_strTokenFactoryURL);
             try {
-                // DISCLAIMER: the application developer should implement an authentication mechanism from the mobile app to the
+                // DISCLAIMER: need implement an authentication mechanism from the mobile app to the
                 // server side app so the token factory in the server only provides tokens to authenticated clients
                 HttpClient httpClient = new DefaultHttpClient();
                 HttpGet httpGet = new HttpGet(m_strTokenFactoryURL);
@@ -631,9 +625,17 @@ public class MainActivity extends AppCompatActivity {
 
         //Call the sdk function
         TextToSpeech.sharedInstance().synthesize(ttsText);
+        if(talkFragment!= null) talkFragment.add(ttsText, true);
 
     }
 
 
-
+    @Override
+    public void onBackPressed() {
+        if(isRecording) {
+            updateRecordIntefrace();
+            fragmentTabSTT.record(false);
+        }
+        super.onBackPressed();
+    }
 }

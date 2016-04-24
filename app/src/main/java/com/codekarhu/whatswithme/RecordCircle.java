@@ -28,7 +28,6 @@ public class RecordCircle extends View {
         paint.setColor(0xff5795cc);
         paintRecord.setColor(0x0d000000);
         micDrawable = getResources().getDrawable(R.drawable.mic_pressed);
-        setAmplitude(50);
     }
 
     public RecordCircle(Context context, AttributeSet attributeSet) {
@@ -36,7 +35,6 @@ public class RecordCircle extends View {
         paint.setColor(0xff5795cc);
         paintRecord.setColor(0x0d000000);
         micDrawable = getResources().getDrawable(R.drawable.mic_pressed);
-        setAmplitude(50);
     }
 
     public void setAmplitude(double value) {
