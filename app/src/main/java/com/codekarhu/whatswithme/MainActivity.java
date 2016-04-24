@@ -228,8 +228,10 @@ public class MainActivity extends AppCompatActivity {
                     fragmentTabSTT.record(false);
                     playTTS(fooData[phase]);
                     phase = 3;
-                    Thread.sleep(10000);
+                    Thread.sleep(6000);
                     fragmentTabSTT.record(true);
+                    Thread.sleep(6000);
+                    playTTS("Probably you have got a cold");
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (JSONException e) {
