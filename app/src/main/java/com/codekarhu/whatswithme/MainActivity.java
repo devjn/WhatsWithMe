@@ -203,6 +203,7 @@ public class MainActivity extends AppCompatActivity {
 
     int phase = 0;
 
+//For presentation only, remove and replace with connection to Watson api
     String[] fooData = new String[] {"Do you have a temperature?", "Do you have dry cough", "Do you have sneezing" };
     String[] fooTalk = new String[] {"Doc, what is wrong with me, I have sharp headache", "I think it's quite high"};
 
