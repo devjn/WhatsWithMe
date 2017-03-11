@@ -1,2 +1,2 @@
 # WhatsWithMe
-Watson powered tool to find out your desease by symtoms
+Watson powered tool to find out your disease by symptoms
